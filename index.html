@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>CASS Easy — Professional PDF editing</title>
+<meta name="theme-color" content="#0F1826">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+:root{
+  --ink:#0F1826; --ink-2:#1B2637; --paper:#F8F6F0; --paper-dim:#EEEAE0;
+  --slate:#5B6472; --brass:#B08A4E; --brass-bright:#C9A05F; --redline:#9A4B3F;
+  --line:#DCD6C8; --shadow:0 8px 30px rgba(15,24,38,0.16); --radius:3px;
+  --serif:"Source Serif 4",Georgia,serif; --sans:"Inter",-apple-system,sans-serif; --mono:"IBM Plex Mono",monospace;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:var(--ink);font-family:var(--sans);color:var(--ink);overscroll-behavior:none;}
+button{font-family:var(--sans);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+::selection{background:var(--brass-bright);color:var(--ink);}
+
+/* ---------- LANDING ---------- */
+#landing{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 20% -10%,#223148 0%,transparent 45%),radial-gradient(circle at 90% 110%,#1a2436 0%,transparent 40%),var(--ink);
+  color:var(--paper);padding:40px 24px;text-align:center;
+  animation:fadeIn .6s var(--ease);
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.brand{font-family:var(--serif);font-weight:600;font-size:clamp(42px,10vw,84px);letter-spacing:-0.01em;color:var(--paper);margin:0 0 6px 0;}
+.brand em{font-style:normal;color:var(--brass-bright);}
+.tagline{font-family:var(--mono);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#8B93A3;margin-bottom:44px;}
+#dropzone{width:min(560px,90vw);border:1.5px dashed #3C4A62;border-radius:8px;padding:40px 28px;background:rgba(255,255,255,0.02);transition:all .18s var(--ease);}
+#dropzone.drag{border-color:var(--brass-bright);background:rgba(201,160,95,0.06);transform:scale(1.01);}
+#dropzone p{color:#A9B0BE;font-size:14px;margin:0 0 18px 0;}
+#pickBtn{background:var(--brass);color:var(--ink);border:none;padding:13px 26px;border-radius:4px;font-weight:600;font-size:14px;transition:all .15s var(--ease);}
+#pickBtn:hover{background:var(--brass-bright);transform:translateY(-1px);}
+#pickBtn:active{transform:translateY(0) scale(.97);}
+#fileInput,#mergeInput{display:none;}
+.landing-features{display:flex;gap:28px;margin-top:40px;color:#6E7788;font-family:var(--mono);font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase;flex-wrap:wrap;justify-content:center;max-width:480px;}
+.landing-features span::before{content:"— ";color:#3C4A62;}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none;height:100vh;height:100dvh;background:var(--ink-2);}
+#app.active{display:flex;flex-direction:column;}
+
+#topbar{height:56px;flex:none;display:flex;align-items:center;gap:10px;background:var(--ink);border-bottom:1px solid #263143;padding:0 14px;color:var(--paper);overflow-x:auto;scrollbar-width:none;}
+#topbar::-webkit-scrollbar{display:none;}
+#topbar .wordmark{font-family:var(--serif);font-weight:600;font-size:18px;flex:none;}
+#topbar .wordmark em{font-style:normal;color:var(--brass-bright);}
+.spacer{flex:1;min-width:8px;}
+.tbtn{background:transparent;border:1px solid #2E3A4F;color:#C7CCD6;padding:8px 12px;border-radius:4px;font-size:12.5px;font-weight:500;display:flex;align-items:center;gap:6px;white-space:nowrap;flex:none;transition:all .13s var(--ease);}
+.tbtn:hover{border-color:var(--brass);color:var(--paper);}
+.tbtn:active{transform:scale(.95);}
+.tbtn.primary{background:var(--brass);border-color:var(--brass);color:var(--ink);font-weight:600;}
+.tbtn.primary:hover{background:var(--brass-bright);}
+.tbtn:disabled{opacity:0.35;cursor:default;}
+.tbtn.icon{padding:8px 10px;}
+
+#moreMenu{position:absolute;top:56px;right:10px;background:var(--ink);border:1px solid #2E3A4F;border-radius:6px;box-shadow:var(--shadow);display:none;flex-direction:column;min-width:190px;z-index:50;overflow:hidden;
+  transform-origin:top right;animation:pop .16s var(--ease);}
+@keyframes pop{from{opacity:0;transform:scale(.92) translateY(-4px);}to{opacity:1;transform:scale(1) translateY(0);}}
+#moreMenu.active{display:flex;}
+#moreMenu button{background:transparent;border:none;color:#C7CCD6;text-align:left;padding:12px 14px;font-size:13px;border-bottom:1px solid #232F42;}
+#moreMenu button:hover{background:#232F42;color:var(--brass-bright);}
+#moreMenu button:last-child{border-bottom:none;}
+
+#body{flex:1;display:flex;min-height:0;position:relative;}
+
+/* ---------- RAIL ---------- */
+#rail{width:150px;flex:none;background:var(--ink);border-right:1px solid #263143;overflow-y:auto;padding:16px 12px;position:relative;}
+#rail::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:repeating-linear-gradient(to bottom,#33405A 0,#33405A 4px,transparent 4px,transparent 9px);}
+.thumb{position:relative;margin-bottom:14px;cursor:grab;border-radius:3px;overflow:hidden;border:2px solid transparent;background:var(--paper);transition:border-color .12s,transform .12s var(--ease);}
+.thumb.active{border-color:var(--brass-bright);}
+.thumb.dragging{opacity:.4;}
+.thumb.dragover{transform:translateY(4px);}
+.thumb img{display:block;width:100%;pointer-events:none;}
+.thumb .pno{position:absolute;bottom:3px;right:5px;font-family:var(--mono);font-size:9px;background:rgba(15,24,38,0.75);color:var(--paper);padding:1px 4px;border-radius:2px;}
+.thumb .pactions{position:absolute;top:3px;right:3px;display:flex;gap:2px;opacity:0;transition:opacity .15s;}
+.thumb:hover .pactions{opacity:1;}
+.pactions button{width:20px;height:20px;border:none;border-radius:2px;background:rgba(15,24,38,0.8);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;}
+.pactions button:hover{background:var(--redline);}
+
+/* ---------- STAGE ---------- */
+#stageWrap{flex:1;overflow:auto;background:radial-gradient(circle at 50% 0%,#202B3E 0%,var(--ink-2) 70%);display:flex;justify-content:center;padding:32px 16px 140px;-webkit-overflow-scrolling:touch;}
+#stage{position:relative;box-shadow:var(--shadow);transition:opacity .18s var(--ease);}
+#stage.switching{opacity:0;}
+#stage canvas{display:block;}
+#overlay{position:absolute;top:0;left:0;right:0;bottom:0;}
+.word{position:absolute;cursor:text;border-radius:2px;touch-action:manipulation;}
+.word:hover{background:rgba(176,138,78,0.14);}
+.word.selected{outline:1.5px solid var(--brass);background:rgba(176,138,78,0.10);}
+.word.editing{outline:1.5px solid var(--redline);background:var(--paper);color:var(--ink);z-index:5;}
+.newtext{position:absolute;min-width:60px;min-height:20px;outline:1.5px dashed var(--brass);background:rgba(248,246,240,0.9);color:var(--ink);padding:1px 3px;}
+
+#wordbar{position:absolute;display:none;gap:2px;background:var(--ink);border:1px solid #2E3A4F;border-radius:5px;padding:4px;box-shadow:var(--shadow);z-index:20;animation:pop .13s var(--ease);}
+#wordbar button{background:transparent;border:none;color:#C7CCD6;width:30px;height:30px;border-radius:4px;font-family:var(--mono);font-size:13px;display:flex;align-items:center;justify-content:center;}
+#wordbar button:hover{background:#263143;color:var(--brass-bright);}
+#wordbar .del:hover{color:#E27B6A;}
+#wordbar .sep{width:1px;background:#2E3A4F;margin:2px 3px;}
+
+/* ---------- bottom mobile toolbar ---------- */
+#mobileBar{display:none;}
+
+/* ---------- modal ---------- */
+.modal-backdrop{position:fixed;inset:0;background:rgba(10,15,24,0.6);display:none;align-items:center;justify-content:center;z-index:80;backdrop-filter:blur(2px);}
+.modal-backdrop.active{display:flex;animation:fadeIn .15s var(--ease);}
+.modal{background:var(--ink);border:1px solid #2E3A4F;border-radius:8px;padding:24px;width:min(380px,90vw);color:var(--paper);box-shadow:var(--shadow);animation:pop .18s var(--ease);}
+.modal h3{font-family:var(--serif);margin:0 0 14px 0;font-size:19px;font-weight:600;}
+.modal label{display:block;font-family:var(--mono);font-size:11px;color:#8B93A3;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.modal input[type=text]{width:100%;background:#161F30;border:1px solid #2E3A4F;color:var(--paper);padding:10px 12px;border-radius:4px;font-size:14px;margin-bottom:16px;}
+.modal input[type=text]:focus{outline:none;border-color:var(--brass);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+
+/* ---------- loading / toast ---------- */
+#loading{position:fixed;inset:0;background:var(--ink);display:none;align-items:center;justify-content:center;flex-direction:column;color:#8B93A3;font-family:var(--mono);font-size:13px;letter-spacing:0.06em;z-index:100;}
+#loading.active{display:flex;}
+.spinner{width:28px;height:28px;border-radius:50%;border:2px solid #2E3A4F;border-top-color:var(--brass-bright);animation:spin 0.8s linear infinite;margin-bottom:14px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);border:1px solid var(--brass);padding:10px 18px;border-radius:4px;font-size:13px;opacity:0;transition:all .25s var(--ease);pointer-events:none;z-index:200;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.zoomlabel{font-family:var(--mono);font-size:12px;color:#8B93A3;min-width:38px;text-align:center;flex:none;}
+
+/* ---------- MOBILE FIRST ADAPTATIONS ---------- */
+@media (max-width:760px){
+  #rail{display:none;}
+  #body.showRail #rail{display:block;position:absolute;left:0;top:0;bottom:0;width:120px;z-index:30;box-shadow:8px 0 24px rgba(0,0,0,.35);}
+  #stageWrap{padding:16px 8px 160px;}
+  .tbtn span.label{display:none;}
+  .tbtn{padding:9px;}
+  #wordbar button{width:36px;height:36px;font-size:15px;}
+  .landing-features{display:none;}
+  #dropzone{padding:32px 20px;}
+}
+</style>
+</head>
+<body>
+
+<div id="landing">
+  <h1 class="brand">CASS <em>Easy</em></h1>
+  <div class="tagline">Edit any word. Merge, split, and export true to the original.</div>
+  <div id="dropzone">
+    <p>Drop a PDF here, or</p>
+    <button id="pickBtn">Choose a file</button>
+    <input type="file" id="fileInput" accept="application/pdf" />
+  </div>
+  <div class="landing-features">
+    <span>Word-level editing</span><span>Merge &amp; split</span><span>Watermark</span><span>Runs entirely in your browser</span>
+  </div>
+</div>
+
+<div id="app">
+  <div id="topbar">
+    <div class="wordmark">CASS <em>Easy</em></div>
+    <button class="tbtn icon" id="railToggle" title="Pages">☰</button>
+    <div class="spacer"></div>
+    <button class="tbtn" id="zoomOut">–</button>
+    <div class="zoomlabel" id="zoomLabel">100%</div>
+    <button class="tbtn" id="zoomIn">+</button>
+    <button class="tbtn" id="undoBtn" disabled><span class="label">Undo</span>↺</button>
+    <button class="tbtn" id="moreBtn"><span class="label">Tools</span> ⋯</button>
+    <button class="tbtn primary" id="exportBtn"><span class="label">Export</span> ⭳</button>
+  </div>
+
+  <div id="moreMenu">
+    <button id="btnAddText">＋ Add text box</button>
+    <button id="btnMerge">⇄ Merge another PDF</button>
+    <button id="btnSplit">✂ Extract / split pages</button>
+    <button id="btnWatermark">◐ Add watermark</button>
+  </div>
+
+  <div id="body">
+    <div id="rail"></div>
+    <div id="stageWrap">
+      <div id="stage">
+        <canvas id="pageCanvas"></canvas>
+        <div id="overlay"></div>
+        <div id="wordbar">
+          <button data-act="smaller" title="Smaller">A−</button>
+          <button data-act="bigger" title="Bigger">A+</button>
+          <div class="sep"></div>
+          <button data-act="del" class="del" title="Delete">🗑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="mergeInput" accept="application/pdf" />
+
+<div class="modal-backdrop" id="splitModal">
+  <div class="modal">
+    <h3>Extract pages</h3>
+    <label>Page range (e.g. 1-3,5)</label>
+    <input type="text" id="splitRange" placeholder="1-3,5" />
+    <div class="modal-actions">
+      <button class="tbtn" data-close="splitModal">Cancel</button>
+      <button class="tbtn primary" id="doSplit">Extract</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="watermarkModal">
+  <div class="modal">
+    <h3>Add watermark</h3>
+    <label>Text</label>
+    <input type="text" id="watermarkText" placeholder="CONFIDENTIAL" />
+    <div class="modal-actions">
+      <button class="tbtn" data-close="watermarkModal">Cancel</button>
+      <button class="tbtn primary" id="doWatermark">Apply to all pages</button>
+    </div>
+  </div>
+</div>
+
+<div id="loading"><div class="spinner"></div><div id="loadingText">Reading document…</div></div>
+<div id="toast"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js";
+const { PDFDocument, rgb, degrees } = PDFLib;
+
+/* ---------------- state ---------------- */
+let docs = [];              // array of loaded pdf.js documents
+let fileName = "document.pdf";
+let currentPageNum = 1;     // index into pages array (position), not pdf page num
+let scale = 1.5, zoomPct = 100;
+let pages = [];             // { docIndex, num, rotation, deleted, edits:[], newTexts:[], watermark:null }
+let history = [];
+let selectedWordEl = null, editingWordEl = null;
+let dragSrcIndex = null;
+
+const el = id => document.getElementById(id);
+const stage = el('stage'), canvas = el('pageCanvas'), overlay = el('overlay'), wordbar = el('wordbar');
+
+function showLoading(msg){ el('loadingText').textContent = msg||"Working…"; el('loading').classList.add('active'); }
+function hideLoading(){ el('loading').classList.remove('active'); }
+function toast(msg){ const t=el('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2000); }
+
+/* ---------------- landing / load ---------------- */
+const dropzone = el('dropzone');
+['dragenter','dragover'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.remove('drag');}));
+dropzone.addEventListener('drop', e=>{ const f=e.dataTransfer.files[0]; if(f) loadFile(f); });
+el('pickBtn').addEventListener('click', ()=> el('fileInput').click());
+el('fileInput').addEventListener('change', e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); });
+
+async function loadFile(file){
+  fileName = file.name;
+  showLoading("Reading " + fileName + "…");
+  const bytes = await file.arrayBuffer();
+  const doc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
+  docs = [doc];
+  pages = [];
+  for(let i=1;i<=doc.numPages;i++) pages.push({ docIndex:0, num:i, rotation:0, deleted:false, edits:[], newTexts:[], watermark:null });
+  history = []; updateUndoBtn();
+
+  el('landing').style.display='none';
+  el('app').classList.add('active');
+
+  await buildRail();
+  currentPageNum = pages[0].num;
+  await renderPage(pages[0]);
+  hideLoading();
+}
+
+function activePages(){ return pages.filter(p=>!p.deleted); }
+function pageByDisplayNum(num){ return pages.find(p=>p.num===num); }
+
+/* ---------------- rail ---------------- */
+async function buildRail(){
+  const rail = el('rail');
+  rail.innerHTML='';
+  const list = activePages();
+  for(const p of list){
+    const doc = docs[p.docIndex];
+    const pdfPage = await doc.getPage(p.num);
+    const vp = pdfPage.getViewport({ scale:0.18, rotation:p.rotation });
+    const c = document.createElement('canvas'); c.width=vp.width; c.height=vp.height;
+    await pdfPage.render({ canvasContext:c.getContext('2d'), viewport:vp }).promise;
+
+    const wrap = document.createElement('div');
+    wrap.className='thumb'+(p===currentPageObj()?' active':'');
+    wrap.draggable = true;
+    wrap.dataset.idx = pages.indexOf(p);
+    const img = document.createElement('img'); img.src = c.toDataURL();
+    const pno = document.createElement('div'); pno.className='pno'; pno.textContent = list.indexOf(p)+1;
+    const actions = document.createElement('div'); actions.className='pactions';
+    actions.innerHTML = `<button data-act="rotate" title="Rotate">⟳</button><button data-act="delete" title="Delete page">✕</button>`;
+    wrap.append(img,pno,actions);
+
+    wrap.addEventListener('click', e=>{ if(e.target.dataset.act) return; currentPageNum=p.num; renderPage(p); markActiveThumb(wrap); });
+    actions.querySelector('[data-act=rotate]').addEventListener('click', async e=>{ e.stopPropagation(); p.rotation=(p.rotation+90)%360; await buildRail(); if(p.num===currentPageNum) renderPage(p); });
+    actions.querySelector('[data-act=delete]').addEventListener('click', async e=>{
+      e.stopPropagation();
+      if(activePages().length<=1){ toast('Keep at least one page'); return; }
+      p.deleted = true; pushHistory(); await buildRail();
+      const rem = activePages(); currentPageNum = rem[0].num; renderPage(rem[0]);
+    });
+
+    wrap.addEventListener('dragstart', e=>{ dragSrcIndex = wrap.dataset.idx; wrap.classList.add('dragging'); });
+    wrap.addEventListener('dragend', e=>{ wrap.classList.remove('dragging'); });
+    wrap.addEventListener('dragover', e=>{ e.preventDefault(); wrap.classList.add('dragover'); });
+    wrap.addEventListener('dragleave', e=>{ wrap.classList.remove('dragover'); });
+    wrap.addEventListener('drop', async e=>{
+      e.preventDefault(); wrap.classList.remove('dragover');
+      const from = parseInt(dragSrcIndex), to = parseInt(wrap.dataset.idx);
+      if(from===to || isNaN(from)) return;
+      const [moved] = pages.splice(from,1);
+      pages.splice(to,0,moved);
+      pushHistory(); await buildRail(); toast('Reordered');
+    });
+
+    rail.appendChild(wrap);
+  }
+}
+function currentPageObj(){ return pageByDisplayNum(currentPageNum); }
+function markActiveThumb(wrap){ [...el('rail').children].forEach(c=>c.classList.remove('active')); wrap.classList.add('active'); }
+
+el('railToggle').addEventListener('click', ()=> el('body').classList.toggle('showRail'));
+
+/* ---------------- render ---------------- */
+async function renderPage(pInfo){
+  stage.classList.add('switching');
+  const doc = docs[pInfo.docIndex];
+  const pdfPage = await doc.getPage(pInfo.num);
+  const viewport = pdfPage.getViewport({ scale, rotation: pInfo.rotation });
+  canvas.width=viewport.width; canvas.height=viewport.height;
+  stage.style.width=viewport.width+'px'; stage.style.height=viewport.height+'px';
+  overlay.style.width=viewport.width+'px'; overlay.style.height=viewport.height+'px';
+
+  const ctx = canvas.getContext('2d');
+  await pdfPage.render({ canvasContext:ctx, viewport }).promise;
+  for(const e of pInfo.edits) drawEditPatch(ctx, e);
+  if(pInfo.watermark) drawWatermark(ctx, pInfo.watermark, viewport.width, viewport.height);
+
+  overlay.innerHTML='';
+  const textContent = await pdfPage.getTextContent();
+  const deletedKeys = new Set(pInfo.edits.filter(e=>e.deleted).map(e=>e.key));
+  const editedKeys = new Map(pInfo.edits.filter(e=>!e.deleted).map(e=>[e.key,e]));
+
+  let wIndex=0;
+  for(const item of textContent.items){
+    if(!item.str || !item.str.trim()) continue;
+    const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+    const fontHeight = Math.hypot(tx[2],tx[3]);
+    const words = item.str.split(/(\s+)/).filter(s=>s.length);
+    let charOffset=0; const totalChars=item.str.length||1;
+    for(const w of words){
+      const key = pInfo.num+':'+pInfo.docIndex+':'+wIndex; wIndex++;
+      if(!w.trim()){ charOffset+=w.length; continue; }
+      if(deletedKeys.has(key)){ charOffset+=w.length; continue; }
+      const frac = w.length/totalChars;
+      const wx = tx[4] + (charOffset/totalChars)*(item.width*scale);
+      const ww = frac*item.width*scale;
+      const wy = tx[5]-fontHeight;
+
+      const span=document.createElement('div');
+      span.className='word';
+      Object.assign(span.style,{left:wx+'px',top:wy+'px',width:Math.max(ww,8)+'px',height:fontHeight+'px',fontSize:(fontHeight*0.82)+'px',lineHeight:fontHeight+'px',fontFamily:'sans-serif'});
+      span.dataset.key=key; span.dataset.orig=w;
+      span.dataset.x=wx; span.dataset.y=wy; span.dataset.w=ww; span.dataset.h=fontHeight; span.dataset.fontSize=fontHeight;
+      const ed = editedKeys.get(key);
+      if(ed){ span.textContent=ed.text; span.dataset.fontSize=ed.fontSize; } else { span.textContent=''; }
+      span.addEventListener('click', e=>{ e.stopPropagation(); selectWord(span); });
+      span.addEventListener('dblclick', e=>{ e.stopPropagation(); startEdit(span); });
+      overlay.appendChild(span);
+      charOffset+=w.length;
+    }
+  }
+  for(const nt of pInfo.newTexts) renderNewTextBox(nt);
+  deselect();
+  updateZoomLabel();
+  requestAnimationFrame(()=> stage.classList.remove('switching'));
+}
+
+function drawEditPatch(ctx, e){
+  ctx.save();
+  ctx.fillStyle = e.bg||'#FFFFFF';
+  ctx.fillRect(e.x-1,e.y-1,e.w+2,e.h+2);
+  if(!e.deleted && e.text){
+    ctx.fillStyle = e.color||'#111111';
+    ctx.font = (e.fontSize*0.85)+'px '+(e.font||'sans-serif');
+    ctx.textBaseline='top';
+    ctx.fillText(e.text, e.x, e.y+e.h*0.12);
+  }
+  ctx.restore();
+}
+function drawWatermark(ctx, text, w, h){
+  ctx.save();
+  ctx.globalAlpha = 0.14;
+  ctx.fillStyle = '#0F1826';
+  ctx.font = 'bold '+Math.round(w*0.07)+'px sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.translate(w/2,h/2); ctx.rotate(-Math.PI/6);
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
+/* ---------------- word select/edit ---------------- */
+function selectWord(span){ deselect(); selectedWordEl=span; span.classList.add('selected'); positionWordbar(span); }
+function deselect(){ if(selectedWordEl) selectedWordEl.classList.remove('selected'); selectedWordEl=null; wordbar.style.display='none'; }
+function positionWordbar(span){ const x=parseFloat(span.style.left), y=parseFloat(span.style.top); wordbar.style.left=x+'px'; wordbar.style.top=(y-38)+'px'; wordbar.style.display='flex'; }
+overlay.addEventListener('click', ()=> deselect());
+
+wordbar.addEventListener('click', e=>{
+  const act=e.target.dataset.act; if(!act||!selectedWordEl) return;
+  const span=selectedWordEl, fs=parseFloat(span.dataset.fontSize);
+  if(act==='bigger') applyEdit(span, span.textContent||span.dataset.orig, fs*1.15);
+  if(act==='smaller') applyEdit(span, span.textContent||span.dataset.orig, fs*0.87);
+  if(act==='del') deleteWord(span);
+});
+
+function startEdit(span){
+  deselect(); editingWordEl=span;
+  span.classList.add('editing'); span.contentEditable='true';
+  span.textContent = span.textContent||span.dataset.orig;
+  span.focus(); document.execCommand('selectAll',false,null);
+  const commit=()=>{
+    span.contentEditable='false'; span.classList.remove('editing');
+    const newText=span.textContent.trim();
+    if(newText==='') deleteWord(span);
+    else applyEdit(span,newText,parseFloat(span.dataset.fontSize));
+    editingWordEl=null; span.removeEventListener('blur',commit);
+  };
+  span.addEventListener('blur',commit);
+  span.addEventListener('keydown', function(e){ if(e.key==='Enter'){e.preventDefault();span.blur();} if(e.key==='Escape'){span.textContent=span.dataset.orig;span.blur();} });
+}
+function applyEdit(span,text,fontSize){
+  const pInfo=currentPageObj(); const key=span.dataset.key;
+  pInfo.edits = pInfo.edits.filter(e=>e.key!==key);
+  pInfo.edits.push({ key, deleted:false, text, x:parseFloat(span.dataset.x), y:parseFloat(span.dataset.y), w:parseFloat(span.dataset.w), h:parseFloat(span.dataset.h), fontSize, color:'#111111', bg:'#FFFFFF', font:'sans-serif' });
+  pushHistory(); renderPage(pInfo); toast('Edited');
+}
+function deleteWord(span){
+  const pInfo=currentPageObj(); const key=span.dataset.key;
+  pInfo.edits = pInfo.edits.filter(e=>e.key!==key);
+  pInfo.edits.push({ key, deleted:true, x:parseFloat(span.dataset.x)-1, y:parseFloat(span.dataset.y), w:parseFloat(span.dataset.w)+2, h:parseFloat(span.dataset.h), bg:'#FFFFFF' });
+  pushHistory(); renderPage(pInfo); toast('Deleted');
+}
+
+/* ---------------- add text ---------------- */
+let addingText=false;
+el('btnAddText').addEventListener('click', ()=>{ addingText=true; closeMore(); toast('Tap the page to place text'); });
+overlay.addEventListener('click', function(e){
+  if(!addingText) return; addingText=false;
+  const rect=overlay.getBoundingClientRect(); const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  const pInfo=currentPageObj();
+  const nt={ id:'nt'+Date.now(), x, y, text:'New text', fontSize:16, color:'#111111' };
+  pInfo.newTexts.push(nt); pushHistory(); renderNewTextBox(nt,true);
+});
+function renderNewTextBox(nt, focus){
+  const box=document.createElement('div'); box.className='newtext';
+  box.style.left=nt.x+'px'; box.style.top=nt.y+'px'; box.style.fontSize=nt.fontSize+'px';
+  box.contentEditable='true'; box.textContent=nt.text;
+  box.addEventListener('input', ()=> nt.text=box.textContent);
+  box.addEventListener('blur', ()=> pushHistory());
+  overlay.appendChild(box);
+  if(focus){ box.focus(); document.execCommand('selectAll',false,null); }
+}
+
+/* ---------------- zoom ---------------- */
+el('zoomIn').addEventListener('click', ()=>{ scale=Math.min(scale*1.15,3); zoomPct=Math.round(zoomPct*1.15); renderPage(currentPageObj()); });
+el('zoomOut').addEventListener('click', ()=>{ scale=Math.max(scale/1.15,0.5); zoomPct=Math.round(zoomPct/1.15); renderPage(currentPageObj()); });
+function updateZoomLabel(){ el('zoomLabel').textContent=zoomPct+'%'; }
+
+/* ---------------- undo ---------------- */
+function pushHistory(){ history.push(JSON.parse(JSON.stringify(pages))); if(history.length>30) history.shift(); updateUndoBtn(); }
+function updateUndoBtn(){ el('undoBtn').disabled = history.length<2; }
+el('undoBtn').addEventListener('click', ()=>{
+  if(history.length<2) return; history.pop();
+  pages = JSON.parse(JSON.stringify(history[history.length-1]));
+  buildRail(); renderPage(currentPageObj()); updateUndoBtn();
+});
+
+/* ---------------- more menu ---------------- */
+function closeMore(){ el('moreMenu').classList.remove('active'); }
+el('moreBtn').addEventListener('click', e=>{ e.stopPropagation(); el('moreMenu').classList.toggle('active'); });
+document.addEventListener('click', ()=> closeMore());
+
+/* ---------------- merge ---------------- */
+el('btnMerge').addEventListener('click', ()=>{ closeMore(); el('mergeInput').click(); });
+el('mergeInput').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  showLoading('Merging ' + f.name + '…');
+  const bytes = await f.arrayBuffer();
+  const doc = await pdfjsLib.getDocument({ data:bytes.slice(0) }).promise;
+  const docIndex = docs.length; docs.push(doc);
+  for(let i=1;i<=doc.numPages;i++) pages.push({ docIndex, num:i, rotation:0, deleted:false, edits:[], newTexts:[], watermark:null });
+  pushHistory(); await buildRail(); hideLoading();
+  toast('Merged ' + doc.numPages + ' pages from ' + f.name);
+  e.target.value='';
+});
+
+/* ---------------- split / extract ---------------- */
+function openModal(id){ el(id).classList.add('active'); }
+function closeModal(id){ el(id).classList.remove('active'); }
+document.querySelectorAll('[data-close]').forEach(b=> b.addEventListener('click', ()=> closeModal(b.dataset.close)));
+el('btnSplit').addEventListener('click', ()=>{ closeMore(); openModal('splitModal'); });
+el('doSplit').addEventListener('click', async ()=>{
+  const raw = el('splitRange').value.trim();
+  const list = activePages();
+  let indices = [];
+  if(raw){
+    raw.split(',').forEach(part=>{
+      part=part.trim(); if(!part) return;
+      if(part.includes('-')){ const [a,b]=part.split('-').map(n=>parseInt(n.trim())); for(let i=a;i<=b;i++) indices.push(i-1); }
+      else indices.push(parseInt(part)-1);
+    });
+  } else { indices = list.map((_,i)=>i); }
+  indices = [...new Set(indices)].filter(i=>i>=0 && i<list.length);
+  if(!indices.length){ toast('Enter a valid page range'); return; }
+  closeModal('splitModal');
+  await exportPages(indices.map(i=>list[i]), fileName.replace(/\.pdf$/i,'')+' (extract).pdf');
+});
+
+/* ---------------- watermark ---------------- */
+el('btnWatermark').addEventListener('click', ()=>{ closeMore(); openModal('watermarkModal'); });
+el('doWatermark').addEventListener('click', ()=>{
+  const text = el('watermarkText').value.trim();
+  if(!text){ toast('Enter watermark text'); return; }
+  pages.forEach(p=>{ if(!p.deleted) p.watermark = text; });
+  pushHistory(); closeModal('watermarkModal');
+  renderPage(currentPageObj());
+  toast('Watermark applied to all pages');
+});
+
+/* ---------------- export ---------------- */
+el('exportBtn').addEventListener('click', ()=> exportPages(activePages(), fileName.replace(/\.pdf$/i,'')+' (edited).pdf'));
+
+async function exportPages(pageList, outName){
+  showLoading('Preparing your document…');
+  try{
+    const outDoc = await PDFDocument.create();
+    for(const pInfo of pageList){
+      showLoading('Rendering page '+(pageList.indexOf(pInfo)+1)+' of '+pageList.length+'…');
+      const doc = docs[pInfo.docIndex];
+      const pdfPage = await doc.getPage(pInfo.num);
+      const exportScale = 2.2;
+      const viewport = pdfPage.getViewport({ scale: exportScale, rotation: pInfo.rotation });
+      const c=document.createElement('canvas'); c.width=viewport.width; c.height=viewport.height;
+      const ctx=c.getContext('2d');
+      await pdfPage.render({ canvasContext:ctx, viewport }).promise;
+      const factor = exportScale/scale;
+      for(const e of pInfo.edits) drawEditPatch(ctx, { ...e, x:e.x*factor, y:e.y*factor, w:e.w*factor, h:e.h*factor, fontSize:(e.fontSize||14)*factor });
+      for(const nt of pInfo.newTexts){
+        ctx.save(); ctx.fillStyle=nt.color; ctx.font=(nt.fontSize*factor*0.85)+'px sans-serif'; ctx.textBaseline='top';
+        ctx.fillText(nt.text, nt.x*factor, nt.y*factor); ctx.restore();
+      }
+      if(pInfo.watermark) drawWatermark(ctx, pInfo.watermark, viewport.width, viewport.height);
+
+      const imgData = c.toDataURL('image/png');
+      const pngBytes = await fetch(imgData).then(r=>r.arrayBuffer());
+      const png = await outDoc.embedPng(pngBytes);
+      const pageW=viewport.width/exportScale, pageH=viewport.height/exportScale;
+      const newPage = outDoc.addPage([pageW,pageH]);
+      newPage.drawImage(png, { x:0, y:0, width:pageW, height:pageH });
+    }
+    const outBytes = await outDoc.save();
+    const blob = new Blob([outBytes], { type:'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=outName;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    toast('Exported');
+  } catch(err){ console.error(err); toast('Export failed — see console'); }
+  hideLoading();
+}
+
+document.addEventListener('keydown', e=>{
+  if((e.key==='Delete'||e.key==='Backspace') && selectedWordEl && document.activeElement!==selectedWordEl){
+    e.preventDefault(); deleteWord(selectedWordEl);
+  }
+});
+
+/* ---------------- PWA ---------------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
