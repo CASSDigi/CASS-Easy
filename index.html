@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>CASS Easy — Professional PDF editing</title>
+<meta name="theme-color" content="#0F1826">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+:root{
+  --ink:#0F1826; --ink-2:#1B2637; --paper:#F8F6F0; --paper-dim:#EEEAE0;
+  --slate:#5B6472; --brass:#B08A4E; --brass-bright:#C9A05F; --redline:#9A4B3F;
+  --line:#DCD6C8; --shadow:0 8px 30px rgba(15,24,38,0.16); --radius:3px;
+  --serif:"Source Serif 4",Georgia,serif; --sans:"Inter",-apple-system,sans-serif; --mono:"IBM Plex Mono",monospace;
+  --script:"Dancing Script",cursive;
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --chrome:var(--ink); --chrome-2:var(--ink-2); --chrome-text:var(--paper); --chrome-line:#263143; --chrome-border:#2E3A4F;
+}
+html.light{
+  --chrome:#EFEAE0; --chrome-2:#E5DFD1; --chrome-text:#1B2230; --chrome-line:#D8D0BC; --chrome-border:#CDC4AC;
+}
+html.light body{background:var(--chrome-2);}
+html.light #stageWrap{background:radial-gradient(circle at 50% 0%,#DED6C1 0%,var(--chrome-2) 70%);}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:var(--ink);font-family:var(--sans);color:var(--ink);overscroll-behavior:none;}
+button{font-family:var(--sans);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+::selection{background:var(--brass-bright);color:var(--ink);}
+
+/* ---------- LANDING ---------- */
+#landing{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 20% -10%,#223148 0%,transparent 45%),radial-gradient(circle at 90% 110%,#1a2436 0%,transparent 40%),var(--ink);
+  color:var(--paper);padding:40px 24px;text-align:center;
+  animation:fadeIn .6s var(--ease);
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.brand{font-family:var(--serif);font-weight:600;font-size:clamp(42px,10vw,84px);letter-spacing:-0.01em;color:var(--paper);margin:0 0 6px 0;}
+.brand em{font-style:normal;color:var(--brass-bright);}
+.tagline{font-family:var(--mono);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#8B93A3;margin-bottom:44px;}
+#dropzone{width:min(560px,90vw);border:1.5px dashed #3C4A62;border-radius:8px;padding:40px 28px;background:rgba(255,255,255,0.02);transition:all .18s var(--ease);}
+#dropzone.drag{border-color:var(--brass-bright);background:rgba(201,160,95,0.06);transform:scale(1.01);}
+#dropzone p{color:#A9B0BE;font-size:14px;margin:0 0 18px 0;}
+#pickBtn{background:var(--brass);color:var(--ink);border:none;padding:13px 26px;border-radius:4px;font-weight:600;font-size:14px;transition:all .15s var(--ease);}
+#pickBtn:hover{background:var(--brass-bright);transform:translateY(-1px);}
+#pickBtn:active{transform:translateY(0) scale(.97);}
+#fileInput,#mergeInput{display:none;}
+.landing-features{display:flex;gap:28px;margin-top:40px;color:#6E7788;font-family:var(--mono);font-size:10.5px;letter-spacing:0.07em;text-transform:uppercase;flex-wrap:wrap;justify-content:center;max-width:480px;}
+.landing-features span::before{content:"— ";color:#3C4A62;}
+
+/* ---------- APP SHELL ---------- */
+#app{display:none;height:100vh;height:100dvh;background:var(--ink-2);}
+#app.active{display:flex;flex-direction:column;}
+
+#topbar{height:56px;flex:none;display:flex;align-items:center;gap:10px;background:var(--chrome);border-bottom:1px solid var(--chrome-line);padding:0 14px;color:var(--chrome-text);overflow-x:auto;scrollbar-width:none;}
+#topbar::-webkit-scrollbar{display:none;}
+#topbar .wordmark{font-family:var(--serif);font-weight:600;font-size:18px;flex:none;color:var(--chrome-text);}
+#topbar .wordmark em{font-style:normal;color:var(--brass-bright);}
+.spacer{flex:1;min-width:8px;}
+.tbtn{background:transparent;border:1px solid var(--chrome-border);color:var(--chrome-text);padding:8px 12px;border-radius:4px;font-size:12.5px;font-weight:500;display:flex;align-items:center;gap:6px;white-space:nowrap;flex:none;transition:all .13s var(--ease);opacity:.85;}
+.tbtn:hover{border-color:var(--brass);opacity:1;}
+.tbtn:active{transform:scale(.95);}
+.tbtn.primary{background:var(--brass);border-color:var(--brass);color:var(--ink);font-weight:600;opacity:1;}
+.tbtn.primary:hover{background:var(--brass-bright);}
+.tbtn:disabled{opacity:0.35;cursor:default;}
+.tbtn.icon{padding:8px 10px;}
+.tbtn.toolActive{background:var(--brass);border-color:var(--brass);color:var(--ink);opacity:1;}
+
+#moreMenu{position:absolute;top:56px;right:10px;background:var(--chrome);border:1px solid var(--chrome-border);border-radius:6px;box-shadow:var(--shadow);display:none;flex-direction:column;min-width:220px;z-index:50;overflow:hidden;max-height:70vh;overflow-y:auto;
+  transform-origin:top right;animation:pop .16s var(--ease);}
+@keyframes pop{from{opacity:0;transform:scale(.92) translateY(-4px);}to{opacity:1;transform:scale(1) translateY(0);}}
+#moreMenu.active{display:flex;}
+#moreMenu .menugroup{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#8B93A3;padding:10px 14px 4px;}
+#moreMenu button{background:transparent;border:none;color:var(--chrome-text);text-align:left;padding:11px 14px;font-size:13px;border-bottom:1px solid var(--chrome-line);opacity:.85;}
+#moreMenu button:hover{background:rgba(176,138,78,0.12);color:var(--brass-bright);opacity:1;}
+#moreMenu button:last-child{border-bottom:none;}
+
+#body{flex:1;display:flex;min-height:0;position:relative;}
+
+/* ---------- RAIL ---------- */
+#rail{width:150px;flex:none;background:var(--chrome);border-right:1px solid var(--chrome-line);overflow-y:auto;padding:16px 12px;position:relative;}
+#rail::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:repeating-linear-gradient(to bottom,#33405A 0,#33405A 4px,transparent 4px,transparent 9px);}
+.thumb{position:relative;margin-bottom:14px;cursor:grab;border-radius:3px;overflow:hidden;border:2px solid transparent;background:var(--paper);transition:border-color .12s,transform .12s var(--ease);}
+.thumb.active{border-color:var(--brass-bright);}
+.thumb.dragging{opacity:.4;}
+.thumb.dragover{transform:translateY(4px);}
+.thumb img{display:block;width:100%;pointer-events:none;}
+.thumb .pno{position:absolute;bottom:3px;right:5px;font-family:var(--mono);font-size:9px;background:rgba(15,24,38,0.75);color:var(--paper);padding:1px 4px;border-radius:2px;}
+.thumb .pactions{position:absolute;top:3px;right:3px;display:flex;gap:2px;opacity:0;transition:opacity .15s;}
+.thumb:hover .pactions{opacity:1;}
+.pactions button{width:20px;height:20px;border:none;border-radius:2px;background:rgba(15,24,38,0.8);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;}
+.pactions button:hover{background:var(--redline);}
+
+/* ---------- STAGE ---------- */
+#stageWrap{flex:1;overflow:auto;background:radial-gradient(circle at 50% 0%,#202B3E 0%,var(--ink-2) 70%);display:flex;justify-content:center;padding:32px 16px 140px;-webkit-overflow-scrolling:touch;}
+#stage{position:relative;box-shadow:var(--shadow);transition:opacity .18s var(--ease);}
+#stage.switching{opacity:0;}
+#stage canvas{display:block;}
+#overlay{position:absolute;top:0;left:0;right:0;bottom:0;}
+.word{position:absolute;cursor:text;border-radius:2px;touch-action:manipulation;}
+.word:hover{background:rgba(176,138,78,0.14);}
+.word.selected{outline:1.5px solid var(--brass);background:rgba(176,138,78,0.10);}
+.word.editing{outline:1.5px solid var(--redline);background:var(--paper);color:var(--ink);z-index:5;}
+.newtext{position:absolute;min-width:60px;min-height:20px;outline:1.5px dashed var(--brass);background:rgba(248,246,240,0.9);color:var(--ink);padding:1px 3px;}
+
+#wordbar,#annbar{position:absolute;display:none;gap:2px;background:var(--chrome);border:1px solid var(--chrome-border);border-radius:5px;padding:4px;box-shadow:var(--shadow);z-index:20;animation:pop .13s var(--ease);}
+#wordbar button,#annbar button{background:transparent;border:none;color:var(--chrome-text);width:30px;height:30px;border-radius:4px;font-family:var(--mono);font-size:13px;display:flex;align-items:center;justify-content:center;}
+#wordbar button:hover,#annbar button:hover{background:rgba(176,138,78,0.18);color:var(--brass-bright);}
+#wordbar .del:hover,#annbar .del:hover{color:#E27B6A;}
+#wordbar .sep,#annbar .sep{width:1px;background:var(--chrome-border);margin:2px 3px;}
+
+#annCanvas{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;}
+#overlay.toolMode .word{pointer-events:none;}
+#overlay.toolMode{cursor:crosshair;}
+.sticky{position:absolute;min-width:90px;min-height:60px;background:#F6E6A0;color:#3A3212;padding:6px 8px;font-size:12px;box-shadow:0 3px 10px rgba(0,0,0,.25);border-radius:2px 2px 8px 2px;outline:none;}
+
+/* ---------- bottom mobile toolbar ---------- */
+#mobileBar{display:none;}
+
+/* ---------- modal ---------- */
+.modal-backdrop{position:fixed;inset:0;background:rgba(10,15,24,0.6);display:none;align-items:center;justify-content:center;z-index:80;backdrop-filter:blur(2px);}
+.modal-backdrop.active{display:flex;animation:fadeIn .15s var(--ease);}
+.modal{background:var(--chrome);border:1px solid var(--chrome-border);border-radius:8px;padding:24px;width:min(420px,90vw);color:var(--chrome-text);box-shadow:var(--shadow);animation:pop .18s var(--ease);}
+.modal.wide{width:min(560px,92vw);}
+.modal h3{font-family:var(--serif);margin:0 0 14px 0;font-size:19px;font-weight:600;}
+.modal label{display:block;font-family:var(--mono);font-size:11px;color:#8B93A3;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.modal input[type=text]{width:100%;background:rgba(128,128,128,0.08);border:1px solid var(--chrome-border);color:var(--chrome-text);padding:10px 12px;border-radius:4px;font-size:14px;margin-bottom:16px;}
+.modal input[type=text]:focus{outline:none;border-color:var(--brass);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+.modal-check{display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:13px;}
+.modal textarea{width:100%;min-height:160px;background:rgba(128,128,128,0.08);border:1px solid var(--chrome-border);color:var(--chrome-text);padding:10px 12px;border-radius:4px;font-size:13px;margin-bottom:14px;font-family:var(--mono);resize:vertical;}
+
+/* tabs (signature modal) */
+.tabrow{display:flex;gap:4px;margin-bottom:14px;background:rgba(128,128,128,0.08);padding:3px;border-radius:5px;}
+.tabbtn{flex:1;background:transparent;border:none;padding:8px;border-radius:4px;color:var(--chrome-text);font-size:12.5px;opacity:.7;}
+.tabbtn.active{background:var(--brass);color:var(--ink);opacity:1;font-weight:600;}
+.tabpane{display:none;}
+.tabpane.active{display:block;}
+#sigCanvas{width:100%;height:150px;background:#fff;border-radius:4px;touch-action:none;cursor:crosshair;display:block;}
+#sigTypeInput{font-family:var(--script);font-size:34px;width:100%;background:#fff;color:#1a1a1a;border:none;border-radius:4px;padding:10px 14px;margin-bottom:0;}
+.sig-preview-wrap{background:#fff;border-radius:4px;padding:10px;margin-bottom:14px;}
+
+/* command palette */
+#paletteBackdrop{align-items:flex-start!important;padding-top:12vh;}
+#palette{background:var(--chrome);border:1px solid var(--chrome-border);border-radius:8px;width:min(520px,92vw);box-shadow:var(--shadow);overflow:hidden;animation:pop .15s var(--ease);}
+#paletteInput{width:100%;background:transparent;border:none;border-bottom:1px solid var(--chrome-line);color:var(--chrome-text);padding:16px 18px;font-size:16px;outline:none;font-family:var(--sans);}
+#paletteList{max-height:340px;overflow-y:auto;}
+.pitem{padding:11px 18px;font-size:13.5px;color:var(--chrome-text);cursor:pointer;display:flex;justify-content:space-between;opacity:.85;}
+.pitem:hover,.pitem.active{background:rgba(176,138,78,0.14);color:var(--brass-bright);opacity:1;}
+.pitem small{font-family:var(--mono);opacity:.5;font-size:10.5px;}
+
+/* ---------- loading / toast ---------- */
+#loading{position:fixed;inset:0;background:var(--chrome);display:none;align-items:center;justify-content:center;flex-direction:column;color:#8B93A3;font-family:var(--mono);font-size:13px;letter-spacing:0.06em;z-index:100;}
+#loading.active{display:flex;}
+.spinner{width:28px;height:28px;border-radius:50%;border:2px solid var(--chrome-border);border-top-color:var(--brass-bright);animation:spin 0.8s linear infinite;margin-bottom:14px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--chrome);color:var(--chrome-text);border:1px solid var(--brass);padding:10px 18px;border-radius:4px;font-size:13px;opacity:0;transition:all .25s var(--ease);pointer-events:none;z-index:200;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.zoomlabel{font-family:var(--mono);font-size:12px;color:#8B93A3;min-width:38px;text-align:center;flex:none;}
+
+/* ---------- MOBILE FIRST ADAPTATIONS ---------- */
+@media (max-width:760px){
+  #rail{display:none;}
+  #body.showRail #rail{display:block;position:absolute;left:0;top:0;bottom:0;width:120px;z-index:30;box-shadow:8px 0 24px rgba(0,0,0,.35);}
+  #stageWrap{padding:16px 8px 160px;}
+  .tbtn span.label{display:none;}
+  .tbtn{padding:9px;}
+  #wordbar button{width:36px;height:36px;font-size:15px;}
+  .landing-features{display:none;}
+  #dropzone{padding:32px 20px;}
+}
+</style>
+</head>
+<body>
+
+<div id="landing">
+  <h1 class="brand">CASS <em>Easy</em></h1>
+  <div class="tagline">Edit any word. Merge, split, and export true to the original.</div>
+  <div id="dropzone">
+    <p>Drop a PDF here, or</p>
+    <button id="pickBtn">Choose a file</button>
+    <input type="file" id="fileInput" accept="application/pdf" />
+  </div>
+  <div class="landing-features">
+    <span>Word-level editing</span><span>Merge &amp; split</span><span>Watermark</span><span>Runs entirely in your browser</span>
+  </div>
+</div>
+
+<div id="app">
+  <div id="topbar">
+    <div class="wordmark">CASS <em>Easy</em></div>
+    <button class="tbtn icon" id="railToggle" title="Pages">☰</button>
+    <button class="tbtn icon" id="paletteBtn" title="Command palette (Ctrl+K)">⌘K</button>
+    <div class="spacer"></div>
+    <button class="tbtn icon" id="themeToggle" title="Toggle theme">☾</button>
+    <button class="tbtn" id="zoomOut">–</button>
+    <div class="zoomlabel" id="zoomLabel">100%</div>
+    <button class="tbtn" id="zoomIn">+</button>
+    <button class="tbtn" id="undoBtn" disabled><span class="label">Undo</span>↺</button>
+    <button class="tbtn" id="moreBtn"><span class="label">Tools</span> ⋯</button>
+    <button class="tbtn primary" id="exportBtn"><span class="label">Export</span> ⭳</button>
+  </div>
+
+  <div id="moreMenu">
+    <div class="menugroup">Content</div>
+    <button id="btnAddText" data-tool="none">＋ Add text box</button>
+    <button id="btnSignature" data-tool="none">✒ Add signature</button>
+    <div class="menugroup">Annotate</div>
+    <button data-tool="highlight">▤ Highlight</button>
+    <button data-tool="draw">✎ Draw</button>
+    <button data-tool="rect">▭ Rectangle</button>
+    <button data-tool="ellipse">◯ Ellipse</button>
+    <button data-tool="sticky">🗒 Sticky note</button>
+    <button data-tool="redact">■ Redact</button>
+    <div class="menugroup">Document</div>
+    <button id="btnMerge">⇄ Merge another PDF</button>
+    <button id="btnSplit">✂ Extract / split pages</button>
+    <button id="btnWatermark">◐ Add watermark</button>
+    <button id="btnHeaderFooter">☰ Header, footer &amp; page numbers</button>
+    <button id="btnOCR">◈ Run OCR (make text copyable)</button>
+  </div>
+
+  <div id="body">
+    <div id="rail"></div>
+    <div id="stageWrap">
+      <div id="stage">
+        <canvas id="pageCanvas"></canvas>
+        <div id="overlay"></div>
+        <canvas id="annCanvas"></canvas>
+        <div id="wordbar">
+          <button data-act="smaller" title="Smaller">A−</button>
+          <button data-act="bigger" title="Bigger">A+</button>
+          <div class="sep"></div>
+          <button data-act="del" class="del" title="Delete">🗑</button>
+        </div>
+        <div id="annbar">
+          <button data-aact="smaller" title="Smaller">−</button>
+          <button data-aact="bigger" title="Bigger">+</button>
+          <div class="sep"></div>
+          <button data-aact="del" class="del" title="Delete">🗑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="mergeInput" accept="application/pdf" />
+
+<div class="modal-backdrop" id="splitModal">
+  <div class="modal">
+    <h3>Extract pages</h3>
+    <label>Page range (e.g. 1-3,5)</label>
+    <input type="text" id="splitRange" placeholder="1-3,5" />
+    <div class="modal-actions">
+      <button class="tbtn" data-close="splitModal">Cancel</button>
+      <button class="tbtn primary" id="doSplit">Extract</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="watermarkModal">
+  <div class="modal">
+    <h3>Add watermark</h3>
+    <label>Text</label>
+    <input type="text" id="watermarkText" placeholder="CONFIDENTIAL" />
+    <div class="modal-actions">
+      <button class="tbtn" data-close="watermarkModal">Cancel</button>
+      <button class="tbtn primary" id="doWatermark">Apply to all pages</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="signatureModal">
+  <div class="modal">
+    <h3>Add your signature</h3>
+    <div class="tabrow">
+      <button class="tabbtn active" data-tab="draw">Draw</button>
+      <button class="tabbtn" data-tab="type">Type</button>
+    </div>
+    <div class="tabpane active" data-pane="draw">
+      <div class="sig-preview-wrap"><canvas id="sigCanvas"></canvas></div>
+      <div class="modal-actions" style="justify-content:flex-start;margin-bottom:14px;">
+        <button class="tbtn" id="sigClear">Clear</button>
+      </div>
+    </div>
+    <div class="tabpane" data-pane="type">
+      <div class="sig-preview-wrap"><input type="text" id="sigTypeInput" placeholder="Your name" /></div>
+    </div>
+    <div class="modal-actions">
+      <button class="tbtn" data-close="signatureModal">Cancel</button>
+      <button class="tbtn primary" id="doSignature">Use this signature</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="hfModal">
+  <div class="modal">
+    <h3>Header, footer &amp; page numbers</h3>
+    <label>Header text (top of every page)</label>
+    <input type="text" id="hfHeader" placeholder="e.g. Company name" />
+    <label>Footer text (bottom of every page)</label>
+    <input type="text" id="hfFooter" placeholder="e.g. Confidential" />
+    <div class="modal-check">
+      <input type="checkbox" id="hfPageNum" />
+      <label style="margin:0;">Include page numbers</label>
+    </div>
+    <div class="modal-actions">
+      <button class="tbtn" data-close="hfModal">Cancel</button>
+      <button class="tbtn primary" id="doHF">Apply to all pages</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="ocrModal">
+  <div class="modal wide">
+    <h3 id="ocrTitle">Extracted text</h3>
+    <textarea id="ocrText" readonly></textarea>
+    <div class="modal-actions">
+      <button class="tbtn" data-close="ocrModal">Close</button>
+      <button class="tbtn primary" id="ocrCopy">Copy text</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="paletteBackdrop">
+  <div id="palette">
+    <input type="text" id="paletteInput" placeholder="Type a command…" />
+    <div id="paletteList"></div>
+  </div>
+</div>
+
+<div id="loading"><div class="spinner"></div><div id="loadingText">Reading document…</div></div>
+<div id="toast"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const { PDFDocument, rgb, degrees } = PDFLib;
+
+/* ---------------- state ---------------- */
+let docs = [];              // array of loaded pdf.js documents
+let fileName = "document.pdf";
+let currentPageNum = 1;     // index into pages array (position), not pdf page num
+let scale = 1.5, zoomPct = 100;
+let pages = [];             // { docIndex, num, rotation, deleted, edits:[], newTexts:[], watermark:null, annotations:[] }
+let docSettings = { header:'', footer:'', pageNumbers:false };
+let history = [];
+let selectedWordEl = null, editingWordEl = null;
+let selectedAnnId = null;
+let dragSrcIndex = null;
+let tool = 'select';
+let signatureDataURL = null;
+let ocrCache = {};
+const ANN_COLORS = { highlight:'#F5D26B', draw:'#9A4B3F', rect:'#B08A4E', ellipse:'#B08A4E', redact:'#0B0F16' };
+
+const el = id => document.getElementById(id);
+const stage = el('stage'), canvas = el('pageCanvas'), overlay = el('overlay'), wordbar = el('wordbar');
+const annCanvas = el('annCanvas'), annbar = el('annbar');
+
+function showLoading(msg){ el('loadingText').textContent = msg||"Working…"; el('loading').classList.add('active'); }
+function hideLoading(){ el('loading').classList.remove('active'); }
+function toast(msg){ const t=el('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2000); }
+
+/* ---------------- theme ---------------- */
+function applyTheme(mode){
+  document.documentElement.classList.toggle('light', mode==='light');
+  el('themeToggle').textContent = mode==='light' ? '☀' : '☾';
+  try{ localStorage.setItem('cass-theme', mode); }catch(e){}
+}
+(function initTheme(){
+  let saved = 'dark';
+  try{ saved = localStorage.getItem('cass-theme') || 'dark'; }catch(e){}
+  applyTheme(saved);
+})();
+el('themeToggle').addEventListener('click', ()=>{
+  const isLight = document.documentElement.classList.contains('light');
+  applyTheme(isLight ? 'dark' : 'light');
+});
+
+/* ---------------- landing / load ---------------- */
+const dropzone = el('dropzone');
+['dragenter','dragover'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.remove('drag');}));
+dropzone.addEventListener('drop', e=>{ const f=e.dataTransfer.files[0]; if(f) loadFile(f); });
+el('pickBtn').addEventListener('click', ()=> el('fileInput').click());
+el('fileInput').addEventListener('change', e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); });
+
+async function loadFile(file){
+  if(typeof pdfjsLib === 'undefined'){
+    toast('PDF engine failed to load — check your internet connection and reload');
+    return;
+  }
+  fileName = file.name;
+  showLoading("Reading " + fileName + "…");
+  try{
+    const bytes = await file.arrayBuffer();
+    const doc = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
+    docs = [doc];
+    pages = [];
+    for(let i=1;i<=doc.numPages;i++) pages.push({ docIndex:0, num:i, rotation:0, deleted:false, edits:[], newTexts:[], watermark:null, annotations:[] });
+    history = []; updateUndoBtn();
+
+    el('landing').style.display='none';
+    el('app').classList.add('active');
+
+    await buildRail();
+    currentPageNum = pages[0].num;
+    await renderPage(pages[0]);
+  } catch(err){
+    console.error(err);
+    toast('Could not open that PDF: ' + (err && err.message ? err.message : 'unknown error'));
+  }
+  hideLoading();
+}
+
+function activePages(){ return pages.filter(p=>!p.deleted); }
+function pageByDisplayNum(num){ return pages.find(p=>p.num===num); }
+
+/* ---------------- rail ---------------- */
+async function buildRail(){
+  const rail = el('rail');
+  rail.innerHTML='';
+  const list = activePages();
+  for(const p of list){
+    const doc = docs[p.docIndex];
+    const pdfPage = await doc.getPage(p.num);
+    const vp = pdfPage.getViewport({ scale:0.18, rotation:p.rotation });
+    const c = document.createElement('canvas'); c.width=vp.width; c.height=vp.height;
+    await pdfPage.render({ canvasContext:c.getContext('2d'), viewport:vp }).promise;
+
+    const wrap = document.createElement('div');
+    wrap.className='thumb'+(p===currentPageObj()?' active':'');
+    wrap.draggable = true;
+    wrap.dataset.idx = pages.indexOf(p);
+    const img = document.createElement('img'); img.src = c.toDataURL();
+    const pno = document.createElement('div'); pno.className='pno'; pno.textContent = list.indexOf(p)+1;
+    const actions = document.createElement('div'); actions.className='pactions';
+    actions.innerHTML = `<button data-act="rotate" title="Rotate">⟳</button><button data-act="delete" title="Delete page">✕</button>`;
+    wrap.append(img,pno,actions);
+
+    wrap.addEventListener('click', e=>{ if(e.target.dataset.act) return; currentPageNum=p.num; renderPage(p); markActiveThumb(wrap); });
+    actions.querySelector('[data-act=rotate]').addEventListener('click', async e=>{ e.stopPropagation(); p.rotation=(p.rotation+90)%360; await buildRail(); if(p.num===currentPageNum) renderPage(p); });
+    actions.querySelector('[data-act=delete]').addEventListener('click', async e=>{
+      e.stopPropagation();
+      if(activePages().length<=1){ toast('Keep at least one page'); return; }
+      p.deleted = true; pushHistory(); await buildRail();
+      const rem = activePages(); currentPageNum = rem[0].num; renderPage(rem[0]);
+    });
+
+    wrap.addEventListener('dragstart', e=>{ dragSrcIndex = wrap.dataset.idx; wrap.classList.add('dragging'); });
+    wrap.addEventListener('dragend', e=>{ wrap.classList.remove('dragging'); });
+    wrap.addEventListener('dragover', e=>{ e.preventDefault(); wrap.classList.add('dragover'); });
+    wrap.addEventListener('dragleave', e=>{ wrap.classList.remove('dragover'); });
+    wrap.addEventListener('drop', async e=>{
+      e.preventDefault(); wrap.classList.remove('dragover');
+      const from = parseInt(dragSrcIndex), to = parseInt(wrap.dataset.idx);
+      if(from===to || isNaN(from)) return;
+      const [moved] = pages.splice(from,1);
+      pages.splice(to,0,moved);
+      pushHistory(); await buildRail(); toast('Reordered');
+    });
+
+    rail.appendChild(wrap);
+  }
+}
+function currentPageObj(){ return pageByDisplayNum(currentPageNum); }
+function markActiveThumb(wrap){ [...el('rail').children].forEach(c=>c.classList.remove('active')); wrap.classList.add('active'); }
+
+el('railToggle').addEventListener('click', ()=> el('body').classList.toggle('showRail'));
+
+/* ---------------- render ---------------- */
+async function renderPage(pInfo){
+  stage.classList.add('switching');
+  const doc = docs[pInfo.docIndex];
+  const pdfPage = await doc.getPage(pInfo.num);
+  const viewport = pdfPage.getViewport({ scale, rotation: pInfo.rotation });
+  canvas.width=viewport.width; canvas.height=viewport.height;
+  stage.style.width=viewport.width+'px'; stage.style.height=viewport.height+'px';
+  overlay.style.width=viewport.width+'px'; overlay.style.height=viewport.height+'px';
+  annCanvas.width=viewport.width; annCanvas.height=viewport.height;
+  annCanvas.style.width=viewport.width+'px'; annCanvas.style.height=viewport.height+'px';
+  annCanvas.getContext('2d').clearRect(0,0,viewport.width,viewport.height);
+
+  const ctx = canvas.getContext('2d');
+  await pdfPage.render({ canvasContext:ctx, viewport }).promise;
+  for(const e of pInfo.edits) drawEditPatch(ctx, e);
+  if(!pInfo.annotations) pInfo.annotations = [];
+  for(const a of pInfo.annotations) drawAnnotation(ctx, a);
+  if(pInfo.watermark) drawWatermark(ctx, pInfo.watermark, viewport.width, viewport.height);
+  drawHeaderFooter(ctx, viewport.width, viewport.height, activePages().indexOf(pInfo)+1, activePages().length);
+
+  overlay.innerHTML='';
+  const textContent = await pdfPage.getTextContent();
+  const deletedKeys = new Set(pInfo.edits.filter(e=>e.deleted).map(e=>e.key));
+  const editedKeys = new Map(pInfo.edits.filter(e=>!e.deleted).map(e=>[e.key,e]));
+  const redactBoxes = pInfo.annotations.filter(a=>a.type==='redact');
+  function intersectsRedact(x,y,w,h){
+    return redactBoxes.some(r=> x < r.x+r.w && x+w > r.x && y < r.y+r.h && y+h > r.y);
+  }
+
+  let wIndex=0;
+  for(const item of textContent.items){
+    if(!item.str || !item.str.trim()) continue;
+    const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+    const fontHeight = Math.hypot(tx[2],tx[3]);
+    const words = item.str.split(/(\s+)/).filter(s=>s.length);
+    let charOffset=0; const totalChars=item.str.length||1;
+    for(const w of words){
+      const key = pInfo.num+':'+pInfo.docIndex+':'+wIndex; wIndex++;
+      if(!w.trim()){ charOffset+=w.length; continue; }
+      if(deletedKeys.has(key)){ charOffset+=w.length; continue; }
+      const frac = w.length/totalChars;
+      const wx = tx[4] + (charOffset/totalChars)*(item.width*scale);
+      const ww = frac*item.width*scale;
+      const wy = tx[5]-fontHeight;
+      if(intersectsRedact(wx,wy,ww,fontHeight)){ charOffset+=w.length; continue; }
+
+      const span=document.createElement('div');
+      span.className='word';
+      Object.assign(span.style,{left:wx+'px',top:wy+'px',width:Math.max(ww,8)+'px',height:fontHeight+'px',fontSize:(fontHeight*0.82)+'px',lineHeight:fontHeight+'px',fontFamily:'sans-serif'});
+      span.dataset.key=key; span.dataset.orig=w;
+      span.dataset.x=wx; span.dataset.y=wy; span.dataset.w=ww; span.dataset.h=fontHeight; span.dataset.fontSize=fontHeight;
+      const ed = editedKeys.get(key);
+      if(ed){ span.textContent=ed.text; span.dataset.fontSize=ed.fontSize; } else { span.textContent=''; }
+      span.addEventListener('click', e=>{ e.stopPropagation(); selectWord(span); });
+      span.addEventListener('dblclick', e=>{ e.stopPropagation(); startEdit(span); });
+      overlay.appendChild(span);
+      charOffset+=w.length;
+    }
+  }
+  for(const nt of pInfo.newTexts) renderNewTextBox(nt);
+  deselect();
+  updateZoomLabel();
+  requestAnimationFrame(()=> stage.classList.remove('switching'));
+}
+
+function drawEditPatch(ctx, e){
+  ctx.save();
+  ctx.fillStyle = e.bg||'#FFFFFF';
+  ctx.fillRect(e.x-1,e.y-1,e.w+2,e.h+2);
+  if(!e.deleted && e.text){
+    ctx.fillStyle = e.color||'#111111';
+    ctx.font = (e.fontSize*0.85)+'px '+(e.font||'sans-serif');
+    ctx.textBaseline='top';
+    ctx.fillText(e.text, e.x, e.y+e.h*0.12);
+  }
+  ctx.restore();
+}
+function drawWatermark(ctx, text, w, h){
+  ctx.save();
+  ctx.globalAlpha = 0.14;
+  ctx.fillStyle = '#0F1826';
+  ctx.font = 'bold '+Math.round(w*0.07)+'px sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.translate(w/2,h/2); ctx.rotate(-Math.PI/6);
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
+const imgCache = {};
+function getCachedImg(dataURL){
+  if(!imgCache[dataURL]){
+    const img = new Image();
+    img.onload = ()=> renderPage(currentPageObj()); // re-render once loaded so it appears
+    img.src = dataURL;
+    imgCache[dataURL] = img;
+  }
+  return imgCache[dataURL];
+}
+function drawAnnotation(ctx, a){
+  ctx.save();
+  if(a.type==='highlight'){
+    ctx.globalAlpha=0.4; ctx.fillStyle=a.color||ANN_COLORS.highlight;
+    ctx.fillRect(a.x,a.y,a.w,a.h);
+  } else if(a.type==='rect'){
+    ctx.strokeStyle=a.color||ANN_COLORS.rect; ctx.lineWidth=2.5; ctx.strokeRect(a.x,a.y,a.w,a.h);
+  } else if(a.type==='ellipse'){
+    ctx.strokeStyle=a.color||ANN_COLORS.ellipse; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.ellipse(a.x+a.w/2, a.y+a.h/2, Math.abs(a.w/2), Math.abs(a.h/2), 0, 0, Math.PI*2); ctx.stroke();
+  } else if(a.type==='draw'){
+    if(a.points && a.points.length>1){
+      ctx.strokeStyle=a.color||ANN_COLORS.draw; ctx.lineWidth=a.width||3; ctx.lineJoin='round'; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(a.points[0].x,a.points[0].y);
+      for(const p of a.points.slice(1)) ctx.lineTo(p.x,p.y);
+      ctx.stroke();
+    }
+  } else if(a.type==='redact'){
+    ctx.fillStyle = ANN_COLORS.redact; ctx.fillRect(a.x,a.y,a.w,a.h);
+  } else if(a.type==='sticky'){
+    const bw=a.w||120, bh=a.h||70, fs=Math.max(10, bw*0.1);
+    ctx.fillStyle='#F6E6A0'; ctx.fillRect(a.x,a.y,bw,bh);
+    ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.strokeRect(a.x,a.y,bw,bh);
+    ctx.fillStyle='#3A3212'; ctx.font=fs+'px sans-serif'; ctx.textBaseline='top';
+    wrapText(ctx, a.text||'', a.x+bw*0.07, a.y+bw*0.07, bw*0.86, fs*1.25);
+  } else if(a.type==='signature' && a.dataURL){
+    const img = getCachedImg(a.dataURL);
+    if(img && img.complete) ctx.drawImage(img, a.x, a.y, a.w, a.h);
+  }
+  ctx.restore();
+}
+function wrapText(ctx, text, x, y, maxWidth, lineHeight){
+  const words = text.split(' '); let line=''; let yy=y;
+  for(const w of words){
+    const test = line + w + ' ';
+    if(ctx.measureText(test).width > maxWidth && line){ ctx.fillText(line, x, yy); line = w+' '; yy += lineHeight; }
+    else line = test;
+  }
+  ctx.fillText(line, x, yy);
+}
+function drawHeaderFooter(ctx, w, h, pageNum, totalPages){
+  if(!docSettings.header && !docSettings.footer && !docSettings.pageNumbers) return;
+  ctx.save();
+  ctx.fillStyle='#333333'; ctx.font='11px sans-serif'; ctx.textBaseline='top';
+  if(docSettings.header){ ctx.textAlign='center'; ctx.fillText(docSettings.header, w/2, 14); }
+  if(docSettings.footer){ ctx.textAlign='center'; ctx.fillText(docSettings.footer, w/2, h-24); }
+  if(docSettings.pageNumbers){ ctx.textAlign='right'; ctx.fillText('Page '+pageNum+' of '+totalPages, w-20, h-24); }
+  ctx.restore();
+}
+
+/* ---------------- word select/edit ---------------- */
+function selectWord(span){ deselect(); selectedWordEl=span; span.classList.add('selected'); positionWordbar(span); }
+function deselect(){ if(selectedWordEl) selectedWordEl.classList.remove('selected'); selectedWordEl=null; wordbar.style.display='none'; }
+function positionWordbar(span){ const x=parseFloat(span.style.left), y=parseFloat(span.style.top); wordbar.style.left=x+'px'; wordbar.style.top=(y-38)+'px'; wordbar.style.display='flex'; }
+overlay.addEventListener('click', ()=> deselect());
+
+wordbar.addEventListener('click', e=>{
+  const act=e.target.dataset.act; if(!act||!selectedWordEl) return;
+  const span=selectedWordEl, fs=parseFloat(span.dataset.fontSize);
+  if(act==='bigger') applyEdit(span, span.textContent||span.dataset.orig, fs*1.15);
+  if(act==='smaller') applyEdit(span, span.textContent||span.dataset.orig, fs*0.87);
+  if(act==='del') deleteWord(span);
+});
+
+function startEdit(span){
+  deselect(); editingWordEl=span;
+  span.classList.add('editing'); span.contentEditable='true';
+  span.textContent = span.textContent||span.dataset.orig;
+  span.focus(); document.execCommand('selectAll',false,null);
+  const commit=()=>{
+    span.contentEditable='false'; span.classList.remove('editing');
+    const newText=span.textContent.trim();
+    if(newText==='') deleteWord(span);
+    else applyEdit(span,newText,parseFloat(span.dataset.fontSize));
+    editingWordEl=null; span.removeEventListener('blur',commit);
+  };
+  span.addEventListener('blur',commit);
+  span.addEventListener('keydown', function(e){ if(e.key==='Enter'){e.preventDefault();span.blur();} if(e.key==='Escape'){span.textContent=span.dataset.orig;span.blur();} });
+}
+function applyEdit(span,text,fontSize){
+  const pInfo=currentPageObj(); const key=span.dataset.key;
+  pInfo.edits = pInfo.edits.filter(e=>e.key!==key);
+  pInfo.edits.push({ key, deleted:false, text, x:parseFloat(span.dataset.x), y:parseFloat(span.dataset.y), w:parseFloat(span.dataset.w), h:parseFloat(span.dataset.h), fontSize, color:'#111111', bg:'#FFFFFF', font:'sans-serif' });
+  pushHistory(); renderPage(pInfo); toast('Edited');
+}
+function deleteWord(span){
+  const pInfo=currentPageObj(); const key=span.dataset.key;
+  pInfo.edits = pInfo.edits.filter(e=>e.key!==key);
+  pInfo.edits.push({ key, deleted:true, x:parseFloat(span.dataset.x)-1, y:parseFloat(span.dataset.y), w:parseFloat(span.dataset.w)+2, h:parseFloat(span.dataset.h), bg:'#FFFFFF' });
+  pushHistory(); renderPage(pInfo); toast('Deleted');
+}
+
+/* ---------------- add text ---------------- */
+let addingText=false;
+el('btnAddText').addEventListener('click', ()=>{ addingText=true; closeMore(); toast('Tap the page to place text'); });
+overlay.addEventListener('click', function(e){
+  if(!addingText) return; addingText=false;
+  const rect=overlay.getBoundingClientRect(); const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  const pInfo=currentPageObj();
+  const nt={ id:'nt'+Date.now(), x, y, text:'New text', fontSize:16, color:'#111111' };
+  pInfo.newTexts.push(nt); pushHistory(); renderNewTextBox(nt,true);
+});
+function renderNewTextBox(nt, focus){
+  const box=document.createElement('div'); box.className='newtext';
+  box.style.left=nt.x+'px'; box.style.top=nt.y+'px'; box.style.fontSize=nt.fontSize+'px';
+  box.contentEditable='true'; box.textContent=nt.text;
+  box.addEventListener('input', ()=> nt.text=box.textContent);
+  box.addEventListener('blur', ()=> pushHistory());
+  overlay.appendChild(box);
+  if(focus){ box.focus(); document.execCommand('selectAll',false,null); }
+}
+
+/* ---------------- annotation tools ---------------- */
+function setTool(t){
+  tool = t;
+  overlay.classList.toggle('toolMode', t!=='select');
+  annCanvas.style.pointerEvents = (t==='select') ? 'none' : 'auto';
+  document.querySelectorAll('[data-tool]').forEach(b=> b.classList.toggle('toolActive', b.dataset.tool===t));
+  if(t!=='select') deselect();
+  if(t==='select') toast('Select tool');
+  else toast((t==='signature-place' ? 'Click to place your signature' : 'Drag on the page to ' + t) );
+}
+document.querySelectorAll('#moreMenu [data-tool]').forEach(btn=>{
+  if(btn.dataset.tool==='none') return;
+  btn.addEventListener('click', ()=>{ closeMore(); setTool(btn.dataset.tool); });
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && tool!=='select'){ setTool('select'); }
+});
+
+let draft = null; // in-progress annotation
+const actx = annCanvas.getContext('2d');
+
+function annPos(e){
+  const rect = annCanvas.getBoundingClientRect();
+  const cx = (e.touches ? e.touches[0].clientX : e.clientX);
+  const cy = (e.touches ? e.touches[0].clientY : e.clientY);
+  return { x: cx-rect.left, y: cy-rect.top };
+}
+
+annCanvas.addEventListener('mousedown', onAnnStart);
+annCanvas.addEventListener('touchstart', onAnnStart, {passive:true});
+function onAnnStart(e){
+  if(tool==='select') return;
+  const p = annPos(e);
+  if(tool==='sticky'){ placeSticky(p.x,p.y); setTool('select'); return; }
+  if(tool==='signature-place'){ placeSignature(p.x,p.y); setTool('select'); return; }
+  draft = { type:tool, x:p.x, y:p.y, points:[p] };
+  document.addEventListener('mousemove', onAnnMove);
+  document.addEventListener('touchmove', onAnnMove, {passive:true});
+  document.addEventListener('mouseup', onAnnEnd);
+  document.addEventListener('touchend', onAnnEnd);
+}
+function onAnnMove(e){
+  if(!draft) return;
+  const p = annPos(e);
+  actx.clearRect(0,0,annCanvas.width,annCanvas.height);
+  if(draft.type==='draw'){
+    draft.points.push(p);
+    actx.strokeStyle=ANN_COLORS.draw; actx.lineWidth=3; actx.lineJoin='round'; actx.lineCap='round';
+    actx.beginPath(); actx.moveTo(draft.points[0].x,draft.points[0].y);
+    for(const pt of draft.points.slice(1)) actx.lineTo(pt.x,pt.y);
+    actx.stroke();
+  } else {
+    const x=Math.min(draft.x,p.x), y=Math.min(draft.y,p.y), w=Math.abs(p.x-draft.x), h=Math.abs(p.y-draft.y);
+    draft.w=w; draft.h=h; draft.x2=x; draft.y2=y;
+    if(draft.type==='highlight'){ actx.globalAlpha=0.4; actx.fillStyle=ANN_COLORS.highlight; actx.fillRect(x,y,w,h); actx.globalAlpha=1; }
+    else if(draft.type==='rect'){ actx.strokeStyle=ANN_COLORS.rect; actx.lineWidth=2.5; actx.strokeRect(x,y,w,h); }
+    else if(draft.type==='ellipse'){ actx.strokeStyle=ANN_COLORS.ellipse; actx.lineWidth=2.5; actx.beginPath(); actx.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,Math.PI*2); actx.stroke(); }
+    else if(draft.type==='redact'){ actx.fillStyle=ANN_COLORS.redact; actx.fillRect(x,y,w,h); }
+  }
+}
+function onAnnEnd(){
+  document.removeEventListener('mousemove', onAnnMove);
+  document.removeEventListener('touchmove', onAnnMove);
+  document.removeEventListener('mouseup', onAnnEnd);
+  document.removeEventListener('touchend', onAnnEnd);
+  if(!draft) return;
+  actx.clearRect(0,0,annCanvas.width,annCanvas.height);
+  const pInfo = currentPageObj();
+  let entry = null;
+  if(draft.type==='draw' && draft.points.length>2){
+    entry = { type:'draw', points:draft.points, color:ANN_COLORS.draw, width:3 };
+  } else if(draft.w>4 && draft.h>4){
+    entry = { type:draft.type, x:draft.x2, y:draft.y2, w:draft.w, h:draft.h, color:ANN_COLORS[draft.type] };
+  }
+  draft = null;
+  if(entry){ pInfo.annotations.push(entry); pushHistory(); renderPage(pInfo); }
+  setTool('select');
+}
+
+function placeSticky(x,y){
+  const pInfo = currentPageObj();
+  const a = { id:'a'+Date.now(), type:'sticky', x, y, w:120, h:70, text:'Note' };
+  pInfo.annotations.push(a); pushHistory();
+  renderPage(pInfo).then(()=>{
+    // open an inline editable box right after render, matching position
+    const box=document.createElement('div'); box.className='sticky'; box.contentEditable='true';
+    box.style.left=x+'px'; box.style.top=y+'px'; box.style.width='120px'; box.style.minHeight='70px';
+    box.textContent=a.text;
+    box.addEventListener('input', ()=> a.text=box.textContent);
+    box.addEventListener('blur', ()=>{ box.remove(); pushHistory(); renderPage(currentPageObj()); });
+    overlay.appendChild(box); box.focus(); document.execCommand('selectAll',false,null);
+  });
+}
+
+function placeSignature(x,y){
+  if(!signatureDataURL){ toast('Create a signature first'); return; }
+  const img = getCachedImg(signatureDataURL);
+  const natW = 160, natH = 60;
+  const pInfo = currentPageObj();
+  const a = { id:'a'+Date.now(), type:'signature', x, y, w:natW, h:natH, dataURL:signatureDataURL };
+  pInfo.annotations.push(a); pushHistory(); renderPage(pInfo);
+}
+
+/* ---------------- signature modal ---------------- */
+el('btnSignature').addEventListener('click', ()=>{ closeMore(); openModal('signatureModal'); initSigCanvas(); });
+document.querySelectorAll('#signatureModal .tabbtn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('#signatureModal .tabbtn').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('#signatureModal .tabpane').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelector(`#signatureModal .tabpane[data-pane="${b.dataset.tab}"]`).classList.add('active');
+  });
+});
+let sigCtx=null, sigDrawing=false, sigHasInk=false;
+function initSigCanvas(){
+  const c = el('sigCanvas');
+  c.width = c.clientWidth*2; c.height = c.clientHeight*2;
+  sigCtx = c.getContext('2d'); sigCtx.scale(2,2);
+  sigCtx.strokeStyle='#1a1a1a'; sigCtx.lineWidth=2.4; sigCtx.lineJoin='round'; sigCtx.lineCap='round';
+  sigHasInk=false;
+  const pos = e=>{ const r=c.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return {x:t.clientX-r.left, y:t.clientY-r.top}; };
+  const start = e=>{ sigDrawing=true; sigHasInk=true; const p=pos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x,p.y); };
+  const move = e=>{ if(!sigDrawing) return; const p=pos(e); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); };
+  const end = ()=> sigDrawing=false;
+  c.onmousedown=start; c.onmousemove=move; c.onmouseup=end; c.onmouseleave=end;
+  c.ontouchstart=e=>{start(e);}; c.ontouchmove=e=>{move(e);}; c.ontouchend=end;
+}
+el('sigClear').addEventListener('click', ()=>{ const c=el('sigCanvas'); sigCtx.clearRect(0,0,c.width,c.height); sigHasInk=false; });
+el('doSignature').addEventListener('click', ()=>{
+  const activeTab = document.querySelector('#signatureModal .tabbtn.active').dataset.tab;
+  if(activeTab==='draw'){
+    if(!sigHasInk){ toast('Draw your signature first'); return; }
+    signatureDataURL = el('sigCanvas').toDataURL('image/png');
+  } else {
+    const name = el('sigTypeInput').value.trim();
+    if(!name){ toast('Type your name first'); return; }
+    const c=document.createElement('canvas'); c.width=500; c.height=160;
+    const cx=c.getContext('2d'); cx.fillStyle='#fff'; cx.fillRect(0,0,c.width,c.height);
+    cx.fillStyle='#1a1a1a'; cx.font='64px "Dancing Script", cursive'; cx.textBaseline='middle'; cx.textAlign='center';
+    cx.fillText(name, c.width/2, c.height/2);
+    signatureDataURL = c.toDataURL('image/png');
+  }
+  closeModal('signatureModal');
+  setTool('signature-place');
+});
+
+/* ---------------- annotation select bar (post-placement quick edit) ---------------- */
+overlay.addEventListener('click', ()=>{}); // keep existing deselect binding elsewhere
+canvas.addEventListener('click', ()=>{ annbar.style.display='none'; });
+
+/* ---------------- header / footer / page numbers ---------------- */
+el('btnHeaderFooter').addEventListener('click', ()=>{
+  closeMore();
+  el('hfHeader').value = docSettings.header;
+  el('hfFooter').value = docSettings.footer;
+  el('hfPageNum').checked = docSettings.pageNumbers;
+  openModal('hfModal');
+});
+el('doHF').addEventListener('click', ()=>{
+  docSettings.header = el('hfHeader').value.trim();
+  docSettings.footer = el('hfFooter').value.trim();
+  docSettings.pageNumbers = el('hfPageNum').checked;
+  pushHistory(); closeModal('hfModal');
+  renderPage(currentPageObj());
+  toast('Applied to all pages');
+});
+
+/* ---------------- OCR ---------------- */
+el('btnOCR').addEventListener('click', async ()=>{
+  closeMore();
+  if(typeof Tesseract === 'undefined'){ toast('OCR engine failed to load — check your connection'); return; }
+  const pInfo = currentPageObj();
+  const cacheKey = pInfo.docIndex+':'+pInfo.num;
+  if(ocrCache[cacheKey]){ showOcrResult(ocrCache[cacheKey]); return; }
+  showLoading('Reading page text (OCR)…');
+  try{
+    const { data } = await Tesseract.recognize(canvas.toDataURL('image/png'), 'eng', {
+      logger: m=>{ if(m.status && m.progress!=null) showLoading('OCR: '+m.status+' '+Math.round(m.progress*100)+'%'); }
+    });
+    ocrCache[cacheKey] = data.text;
+    showOcrResult(data.text);
+  } catch(err){
+    console.error(err);
+    toast('OCR failed — see console');
+  }
+  hideLoading();
+});
+function showOcrResult(text){
+  el('ocrText').value = text || '(no text found)';
+  openModal('ocrModal');
+}
+el('ocrCopy').addEventListener('click', ()=>{
+  el('ocrText').select();
+  navigator.clipboard && navigator.clipboard.writeText(el('ocrText').value).then(()=> toast('Copied'));
+});
+
+/* ---------------- command palette ---------------- */
+const commands = [
+  { label:'Add text box', run:()=>{ addingText=true; toast('Tap the page to place text'); } },
+  { label:'Add signature', run:()=> { openModal('signatureModal'); initSigCanvas(); } },
+  { label:'Highlight tool', run:()=> setTool('highlight') },
+  { label:'Draw tool', run:()=> setTool('draw') },
+  { label:'Rectangle tool', run:()=> setTool('rect') },
+  { label:'Ellipse tool', run:()=> setTool('ellipse') },
+  { label:'Sticky note tool', run:()=> setTool('sticky') },
+  { label:'Redact tool', run:()=> setTool('redact') },
+  { label:'Select tool (exit current tool)', run:()=> setTool('select') },
+  { label:'Merge another PDF', run:()=> el('mergeInput').click() },
+  { label:'Extract / split pages', run:()=> openModal('splitModal') },
+  { label:'Add watermark', run:()=> openModal('watermarkModal') },
+  { label:'Header, footer & page numbers', run:()=> el('btnHeaderFooter').click() },
+  { label:'Run OCR on this page', run:()=> el('btnOCR').click() },
+  { label:'Toggle theme', run:()=> el('themeToggle').click() },
+  { label:'Toggle pages panel', run:()=> el('body').classList.toggle('showRail') },
+  { label:'Zoom in', run:()=> el('zoomIn').click() },
+  { label:'Zoom out', run:()=> el('zoomOut').click() },
+  { label:'Undo', run:()=> el('undoBtn').click() },
+  { label:'Export PDF', run:()=> el('exportBtn').click() },
+];
+function openPalette(){
+  el('paletteBackdrop').classList.add('active');
+  el('paletteInput').value=''; renderPaletteList('');
+  setTimeout(()=> el('paletteInput').focus(), 30);
+}
+function closePalette(){ el('paletteBackdrop').classList.remove('active'); }
+function renderPaletteList(q){
+  const list = el('paletteList'); list.innerHTML='';
+  const matches = commands.filter(c=> c.label.toLowerCase().includes(q.toLowerCase()));
+  matches.forEach((c,i)=>{
+    const item=document.createElement('div'); item.className='pitem'+(i===0?' active':'');
+    item.textContent=c.label;
+    item.addEventListener('click', ()=>{ closePalette(); c.run(); });
+    list.appendChild(item);
+  });
+}
+el('paletteInput').addEventListener('input', e=> renderPaletteList(e.target.value));
+el('paletteInput').addEventListener('keydown', e=>{
+  if(e.key==='Escape') closePalette();
+  if(e.key==='Enter'){
+    const first = el('paletteList').querySelector('.pitem');
+    if(first) first.click();
+  }
+});
+el('paletteBtn').addEventListener('click', openPalette);
+el('paletteBackdrop').addEventListener('click', e=>{ if(e.target.id==='paletteBackdrop') closePalette(); });
+document.addEventListener('keydown', e=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); openPalette(); }
+});
+
+/* ---------------- zoom ---------------- */
+el('zoomIn').addEventListener('click', ()=>{ scale=Math.min(scale*1.15,3); zoomPct=Math.round(zoomPct*1.15); renderPage(currentPageObj()); });
+el('zoomOut').addEventListener('click', ()=>{ scale=Math.max(scale/1.15,0.5); zoomPct=Math.round(zoomPct/1.15); renderPage(currentPageObj()); });
+function updateZoomLabel(){ el('zoomLabel').textContent=zoomPct+'%'; }
+
+/* ---------------- undo ---------------- */
+function pushHistory(){ history.push(JSON.parse(JSON.stringify({pages, docSettings}))); if(history.length>30) history.shift(); updateUndoBtn(); }
+function updateUndoBtn(){ el('undoBtn').disabled = history.length<2; }
+el('undoBtn').addEventListener('click', ()=>{
+  if(history.length<2) return; history.pop();
+  const snap = JSON.parse(JSON.stringify(history[history.length-1]));
+  pages = snap.pages; docSettings = snap.docSettings;
+  buildRail(); renderPage(currentPageObj()); updateUndoBtn();
+});
+
+/* ---------------- more menu ---------------- */
+function closeMore(){ el('moreMenu').classList.remove('active'); }
+el('moreBtn').addEventListener('click', e=>{ e.stopPropagation(); el('moreMenu').classList.toggle('active'); });
+document.addEventListener('click', ()=> closeMore());
+
+/* ---------------- merge ---------------- */
+el('btnMerge').addEventListener('click', ()=>{ closeMore(); el('mergeInput').click(); });
+el('mergeInput').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  showLoading('Merging ' + f.name + '…');
+  const bytes = await f.arrayBuffer();
+  const doc = await pdfjsLib.getDocument({ data:bytes.slice(0) }).promise;
+  const docIndex = docs.length; docs.push(doc);
+  for(let i=1;i<=doc.numPages;i++) pages.push({ docIndex, num:i, rotation:0, deleted:false, edits:[], newTexts:[], watermark:null, annotations:[] });
+  pushHistory(); await buildRail(); hideLoading();
+  toast('Merged ' + doc.numPages + ' pages from ' + f.name);
+  e.target.value='';
+});
+
+/* ---------------- split / extract ---------------- */
+function openModal(id){ el(id).classList.add('active'); }
+function closeModal(id){ el(id).classList.remove('active'); }
+document.querySelectorAll('[data-close]').forEach(b=> b.addEventListener('click', ()=> closeModal(b.dataset.close)));
+el('btnSplit').addEventListener('click', ()=>{ closeMore(); openModal('splitModal'); });
+el('doSplit').addEventListener('click', async ()=>{
+  const raw = el('splitRange').value.trim();
+  const list = activePages();
+  let indices = [];
+  if(raw){
+    raw.split(',').forEach(part=>{
+      part=part.trim(); if(!part) return;
+      if(part.includes('-')){ const [a,b]=part.split('-').map(n=>parseInt(n.trim())); for(let i=a;i<=b;i++) indices.push(i-1); }
+      else indices.push(parseInt(part)-1);
+    });
+  } else { indices = list.map((_,i)=>i); }
+  indices = [...new Set(indices)].filter(i=>i>=0 && i<list.length);
+  if(!indices.length){ toast('Enter a valid page range'); return; }
+  closeModal('splitModal');
+  await exportPages(indices.map(i=>list[i]), fileName.replace(/\.pdf$/i,'')+' (extract).pdf');
+});
+
+/* ---------------- watermark ---------------- */
+el('btnWatermark').addEventListener('click', ()=>{ closeMore(); openModal('watermarkModal'); });
+el('doWatermark').addEventListener('click', ()=>{
+  const text = el('watermarkText').value.trim();
+  if(!text){ toast('Enter watermark text'); return; }
+  pages.forEach(p=>{ if(!p.deleted) p.watermark = text; });
+  pushHistory(); closeModal('watermarkModal');
+  renderPage(currentPageObj());
+  toast('Watermark applied to all pages');
+});
+
+/* ---------------- export ---------------- */
+el('exportBtn').addEventListener('click', ()=> exportPages(activePages(), fileName.replace(/\.pdf$/i,'')+' (edited).pdf'));
+
+async function exportPages(pageList, outName){
+  showLoading('Preparing your document…');
+  try{
+    const outDoc = await PDFDocument.create();
+    for(const pInfo of pageList){
+      showLoading('Rendering page '+(pageList.indexOf(pInfo)+1)+' of '+pageList.length+'…');
+      const doc = docs[pInfo.docIndex];
+      const pdfPage = await doc.getPage(pInfo.num);
+      const exportScale = 2.2;
+      const viewport = pdfPage.getViewport({ scale: exportScale, rotation: pInfo.rotation });
+      const c=document.createElement('canvas'); c.width=viewport.width; c.height=viewport.height;
+      const ctx=c.getContext('2d');
+      await pdfPage.render({ canvasContext:ctx, viewport }).promise;
+      const factor = exportScale/scale;
+      for(const e of pInfo.edits) drawEditPatch(ctx, { ...e, x:e.x*factor, y:e.y*factor, w:e.w*factor, h:e.h*factor, fontSize:(e.fontSize||14)*factor });
+      for(const nt of pInfo.newTexts){
+        ctx.save(); ctx.fillStyle=nt.color; ctx.font=(nt.fontSize*factor*0.85)+'px sans-serif'; ctx.textBaseline='top';
+        ctx.fillText(nt.text, nt.x*factor, nt.y*factor); ctx.restore();
+      }
+      for(const a of (pInfo.annotations||[])){
+        const scaled = { ...a, x:a.x*factor, y:a.y*factor, w:(a.w||0)*factor, h:(a.h||0)*factor,
+          points: a.points ? a.points.map(p=>({x:p.x*factor,y:p.y*factor})) : undefined,
+          width: (a.width||3)*factor };
+        drawAnnotation(ctx, scaled);
+      }
+      if(pInfo.watermark) drawWatermark(ctx, pInfo.watermark, viewport.width, viewport.height);
+      drawHeaderFooter(ctx, viewport.width, viewport.height, pageList.indexOf(pInfo)+1, pageList.length);
+
+      const imgData = c.toDataURL('image/png');
+      const pngBytes = await fetch(imgData).then(r=>r.arrayBuffer());
+      const png = await outDoc.embedPng(pngBytes);
+      const pageW=viewport.width/exportScale, pageH=viewport.height/exportScale;
+      const newPage = outDoc.addPage([pageW,pageH]);
+      newPage.drawImage(png, { x:0, y:0, width:pageW, height:pageH });
+    }
+    const outBytes = await outDoc.save();
+    const blob = new Blob([outBytes], { type:'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=outName;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    toast('Exported');
+  } catch(err){ console.error(err); toast('Export failed — see console'); }
+  hideLoading();
+}
+
+document.addEventListener('keydown', e=>{
+  if((e.key==='Delete'||e.key==='Backspace') && selectedWordEl && document.activeElement!==selectedWordEl){
+    e.preventDefault(); deleteWord(selectedWordEl);
+  }
+});
+
+/* ---------------- PWA ---------------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
