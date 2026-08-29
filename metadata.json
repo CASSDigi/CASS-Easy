@@ -1,0 +1,6 @@
+{
+  "name": "CASS Easy",
+  "description": "Premium luxury QR & Barcode scanner, advanced QR customization studio, smart security vault, digital business cards, and everyday utility platform.",
+  "requestFramePermissions": ["CAMERA"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
